@@ -1,0 +1,11 @@
+services:
+  vf-llms-to-kb:
+    build: .
+    container_name: vf-llms-to-kb
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    volumes:
+      - ./vfllms.db:/app/vfllms.db
+    env_file:
+      - .env
+    command: ["npm", "start"]

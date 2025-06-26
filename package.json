@@ -1,0 +1,30 @@
+{
+  "name": "vf-llms-to-kb",
+  "version": "1.0.0",
+  "description": "CLI and API to upload docs from a llms.txt URL to a Voiceflow Knowledge Base",
+  "main": "dist/cli.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "nodemon src/server.ts",
+    "cli": "ts-node src/cli.ts"
+  },
+  "dependencies": {
+    "axios": "^1.10.0",
+    "better-sqlite3": "^12.1.1",
+    "chalk": "^5.4.1",
+    "commander": "^14.0.0",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "typescript": "^5.8.3",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.4",
+    "@types/uuid": "^10.0.0",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2"
+  }
+}
