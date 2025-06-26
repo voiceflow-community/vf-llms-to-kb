@@ -5,7 +5,10 @@ services:
     ports:
       - "${PORT:-3000}:${PORT:-3000}"
     volumes:
-      - ./vfllms.db:/data/vfllms.db
+      - vfllms-db-data:/app/db
     env_file:
       - .env
     command: ["npm", "start"]
+
+volumes:
+  vfllms-db-data:
