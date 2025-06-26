@@ -1,7 +1,9 @@
 import Database from 'better-sqlite3';
 import { UploadTask } from './types';
 
-const db = new Database('vfllms.db');
+// Allow DB path to be set via env (for Docker/cloud compatibility)
+const dbPath = process.env.SQLITE_PATH || 'vfllms.db';
+const db = new Database(dbPath);
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS doc_hashes (

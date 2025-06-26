@@ -23,6 +23,7 @@ A CLI and API to upload markdown formatted docs from a llms.txt like the one gen
    ```sh
    cp .env.template .env
    # Then edit .env and set your API_KEY, LLMS_URL, DOMAIN, and PORT as needed
+   # For Docker/cloud, set SQLITE_PATH to a writable location (e.g., /tmp/vfllms.db)
    ```
 4. Build the project:
    ```sh
