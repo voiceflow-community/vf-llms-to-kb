@@ -6,6 +6,7 @@ import { uploadDocs } from './uploader';
 import { createTask, updateTaskStatus, getTask } from './db';
 import { syncStaleDocs } from './sync';
 
+import { URL } from 'url';
 const app = express();
 app.use(express.json());
 
@@ -15,6 +16,10 @@ app.get('/health', (req: Request, res: Response) => {
 
 app.post('/upload', async (req: Request, res: Response) => {
   const { apiKey, llmsUrl, force, sync } = req.body;
+  // SSRF prevention: restrict allowed llmsUrl hosts
+  if (!isAllowedUrl(llmsUrl)) {
+    return res.status(400).json({ error: 'Provided llmsUrl is not allowed.' });
+  }
   const taskId = uuidv4();
   createTask({
     id: taskId,
