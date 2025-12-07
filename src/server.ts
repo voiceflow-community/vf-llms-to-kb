@@ -7,6 +7,45 @@ import { createTask, updateTaskStatus, getTask } from './db';
 import { syncStaleDocs } from './sync';
 
 import { URL } from 'url';
+
+// SSRF prevention: validate URL is safe to fetch
+function isAllowedUrl(urlString: string | undefined): boolean {
+  if (!urlString) {
+    return true; // Allow undefined, will fall back to env variable
+  }
+
+  try {
+    const url = new URL(urlString);
+
+    // Only allow HTTPS protocol
+    if (url.protocol !== 'https:') {
+      return false;
+    }
+
+    // Block private IP ranges and localhost
+    const hostname = url.hostname.toLowerCase();
+    const privatePatterns = [
+      /^localhost$/,
+      /^127\./,
+      /^10\./,
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+      /^192\.168\./,
+      /^169\.254\./,
+      /^::1$/,
+      /^fc00:/,
+      /^fe80:/,
+    ];
+
+    if (privatePatterns.some(pattern => pattern.test(hostname))) {
+      return false;
+    }
+
+    return true;
+  } catch (e) {
+    return false; // Invalid URL
+  }
+}
+
 const app = express();
 app.disable('x-powered-by'); // Security: Disable X-Powered-By header
 app.use(express.json());
@@ -15,11 +54,12 @@ app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'ok' });
 });
 
-app.post('/upload', async (req: Request, res: Response) => {
+app.post('/upload', (req: Request, res: Response) => {
   const { apiKey, llmsUrl, force, sync } = req.body;
   // SSRF prevention: restrict allowed llmsUrl hosts
   if (!isAllowedUrl(llmsUrl)) {
-    return res.status(400).json({ error: 'Provided llmsUrl is not allowed.' });
+    res.status(400).json({ error: 'Provided llmsUrl is not allowed.' });
+    return;
   }
   const taskId = uuidv4();
   createTask({
