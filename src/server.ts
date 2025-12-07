@@ -8,6 +8,7 @@ import { syncStaleDocs } from './sync';
 
 import { URL } from 'url';
 const app = express();
+app.disable('x-powered-by'); // Security: Disable X-Powered-By header
 app.use(express.json());
 
 app.get('/health', (req: Request, res: Response) => {
