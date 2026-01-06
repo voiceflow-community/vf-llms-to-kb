@@ -5,46 +5,7 @@ import { parseLLMSTxt } from './parser';
 import { uploadDocs } from './uploader';
 import { createTask, updateTaskStatus, getTask } from './db';
 import { syncStaleDocs } from './sync';
-
-import { URL } from 'url';
-
-// SSRF prevention: validate URL is safe to fetch
-function isAllowedUrl(urlString: string | undefined): boolean {
-  if (!urlString) {
-    return true; // Allow undefined, will fall back to env variable
-  }
-
-  try {
-    const url = new URL(urlString);
-
-    // Only allow HTTPS protocol
-    if (url.protocol !== 'https:') {
-      return false;
-    }
-
-    // Block private IP ranges and localhost
-    const hostname = url.hostname.toLowerCase();
-    const privatePatterns = [
-      /^localhost$/,
-      /^127\./,
-      /^10\./,
-      /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
-      /^192\.168\./,
-      /^169\.254\./,
-      /^::1$/,
-      /^fc00:/,
-      /^fe80:/,
-    ];
-
-    if (privatePatterns.some(pattern => pattern.test(hostname))) {
-      return false;
-    }
-
-    return true;
-  } catch (e) {
-    return false; // Invalid URL
-  }
-}
+import { assertSafeOutboundUrl } from './safe-http';
 
 const app = express();
 app.disable('x-powered-by'); // Security: Disable X-Powered-By header
@@ -56,9 +17,13 @@ app.get('/health', (req: Request, res: Response) => {
 
 app.post('/upload', (req: Request, res: Response) => {
   const { apiKey, llmsUrl, force, sync } = req.body;
-  // SSRF prevention: restrict allowed llmsUrl hosts
-  if (!isAllowedUrl(llmsUrl)) {
-    res.status(400).json({ error: 'Provided llmsUrl is not allowed.' });
+  let config;
+  try {
+    config = getConfig({ apiKey, llmsUrl });
+    // Defense-in-depth: parseLLMSTxt() also enforces this.
+    assertSafeOutboundUrl(config.llmsUrl, { allowHttp: false, allowHttps: true });
+  } catch (e: any) {
+    res.status(400).json({ error: e?.message || 'Provided llmsUrl is not allowed.' });
     return;
   }
   const taskId = uuidv4();
@@ -73,7 +38,6 @@ app.post('/upload', (req: Request, res: Response) => {
     try {
       console.log(`[${taskId}] Parsing llms.txt...`);
       updateTaskStatus(taskId, 'in_progress', 0, 'Parsing llms.txt');
-      const config = getConfig({ apiKey, llmsUrl });
       const docs = await parseLLMSTxt(config.llmsUrl);
       console.log(`[${taskId}] Found ${docs.length} docs. Uploading...`);
       let lastProgress = 0;

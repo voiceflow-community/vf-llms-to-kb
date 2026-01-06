@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { safeGetText } from './safe-http';
 
 interface ParsedDoc {
   title: string;
@@ -7,8 +7,8 @@ interface ParsedDoc {
 }
 
 export async function parseLLMSTxt(llmsUrl: string): Promise<ParsedDoc[]> {
-  const res = await axios.get(llmsUrl);
-  const lines = res.data.split('\n');
+  const data = await safeGetText(llmsUrl, { allowHttp: false, allowHttps: true });
+  const lines = data.split('\n');
   let topic = '';
   const docs: ParsedDoc[] = [];
   const topicRegex = /^##\s+(.+)/;

@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { Config, LLMSDocItem } from './types';
 import { getDocHash, setDocHash } from './db';
 import { getApiBaseUrl } from './config';
+import { safeGetText } from './safe-http';
 
 function hashContent(content: string): string {
   return crypto.createHash('sha256').update(content).digest('hex');
@@ -55,8 +56,7 @@ export async function uploadDocs(
     const mdUrl = doc.url + '.md';
     let content: string;
     try {
-      const res = await axios.get(mdUrl);
-      content = res.data;
+      content = await safeGetText(mdUrl, { allowHttp: true, allowHttps: true });
     } catch (e: any) {
       notFetched++;
       notFetchedUrls.push(mdUrl);
