@@ -107,7 +107,9 @@ export function assertSafeOutboundUrl(urlString: string, opts: SafeUrlOptions = 
 function safeLookup(
   hostname: string,
   options: unknown,
-  callback: (err: NodeJS.ErrnoException | null, address: string, family: number) => void
+  callback:
+    | ((err: NodeJS.ErrnoException | null, address: string, family: number) => void)
+    | ((err: NodeJS.ErrnoException | null, addresses: dns.LookupAddress[]) => void)
 ): void {
   // Node's lookup signature is overloaded: (hostname, cb) or (hostname, options, cb)
   if (typeof options === 'function') {
@@ -115,16 +117,30 @@ function safeLookup(
     return safeLookup(hostname, {}, options);
   }
 
-  const lookupOptions = { ...(options as any), all: true } as dns.LookupAllOptions;
-  dns.lookup(hostname, lookupOptions, (err, addresses: dns.LookupAddress[]) => {
-    if (err) return callback(err, '', 0);
-    const safe = addresses.find((a: dns.LookupAddress) => !isIpBlocked(a.address));
-    if (!safe) {
+  const baseOptions =
+    typeof options === 'number'
+      ? ({ family: options } as dns.LookupOptions)
+      : ({ ...(options as any) } as dns.LookupOptions);
+
+  const wantsAll = !!(baseOptions as any).all;
+
+  // Always resolve all, then filter out private/local addresses.
+  dns.lookup(hostname, { ...baseOptions, all: true } as dns.LookupAllOptions, (err, addresses: dns.LookupAddress[]) => {
+    if (err) return (callback as any)(err);
+
+    const safeAddresses = addresses.filter((a: dns.LookupAddress) => !isIpBlocked(a.address));
+    if (safeAddresses.length === 0) {
       const blockedErr: NodeJS.ErrnoException = new Error('Blocked private/local DNS resolution.');
       blockedErr.code = 'EHOSTUNREACH';
-      return callback(blockedErr, '', 0);
+      return (callback as any)(blockedErr);
     }
-    return callback(null, safe.address, safe.family);
+
+    if (wantsAll) {
+      return (callback as any)(null, safeAddresses);
+    }
+
+    const first = safeAddresses[0];
+    return (callback as any)(null, first.address, first.family);
   });
 }
 
